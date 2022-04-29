@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="425b4c64-47a8-4710-95b8-fd8f4efacdcc" >
+		<file:connection/>
+	</file:config>
+	<flow name="cb-xml-test-implFlow" doc:id="d6a4f076-de32-48be-a2bd-a0cfd9ca30e9" >
+		<scheduler doc:name="Scheduler" doc:id="1184bcc6-b2f3-408e-b589-f2b25bc0976f" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<file:read doc:id="6e991f98-ce26-4cee-94db-9068566be0f9" config-ref="File_Config" path="C:\Users\skomp\OneDrive\Documents\xmlPayload.xml" outputMimeType="application/xml"/>
+		<ee:transform doc:name="Transform Message" doc:id="81e43ccb-5e0d-47af-ba03-150dd30a2545" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="xmlPay" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.Envelope.Body.*Move_Workers_By_Organization_Request filter ($.Move_Workers_By_Organization_Data.Move_Workers_By_Organization_Position_Data.Position_ID contains ("123"))]]></ee:set-variable>
+				<ee:set-variable variableName="xmlPay2" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.Envelope.Body.*Move_Workers_By_Organization_Request filter ($.Move_Workers_By_Organization_Data.Move_Workers_By_Organization_Position_Data.Position_ID contains ("456"))]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="9d8da356-20df-4242-9461-371f0d551b58" >
+			<route >
+				<validation:is-empty-collection doc:name="Is empty collection" doc:id="c1e08eff-9eba-4024-a5fc-377c1e55889b" values="#[vars.xmlPay]" message='"is empty check implemented"' />
+			</route>
+			<route >
+				<ee:transform doc:name="Transform Message" doc:id="b92a55ea-0ad2-4837-8d84-6369ff707f3e">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+sizeOf(vars.xmlPay2)>0
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<raise-error doc:name="Raise error" doc:id="7609ac30-f515-4d84-8ca7-80de11bf9183" type="CUSTOM:TESTING" description='"Testing Exception Scenario"' />
+			</route>
+		</scatter-gather>
+		<logger level="INFO" doc:name="Logger" doc:id="de19cb7d-240d-4727-b4db-948629556a99" message="#[vars.xmlPay2]" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="864bcf91-50e3-4379-90ef-9bcda11050f3" type="VALIDATION:NOT_EMPTY_COLLECTION">
+				<ee:transform doc:name="Transform Message" doc:id="c4b795d0-a8ee-46d2-93c1-a00c38afe3e7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+error.description]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/json
+---
+200]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>
